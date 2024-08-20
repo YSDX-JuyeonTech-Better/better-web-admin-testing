@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 4000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -43,6 +43,7 @@
     "@gluestack/ui-next-adapter": "^2.1.12",
     "@legendapp/motion": "^2.3.0",
     "autoprefixer": "^10.4.20",
+    "mysql2": "^3.11.0",
     "nativewind": "^4.0.36",
     "next": "14.2.5",
     "react": "^18",
