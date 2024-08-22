@@ -1,21 +1,14 @@
 "use client";
-import React, { useState } from "react";
-
-// 가짜 데이터 생성
-const fakeOrders = Array.from({ length: 36 }, (_, index) => ({
-  no: index + 1,
-  image: `IMG1234567${index + 1}`,
-  name: `상품 ${index + 1}`,
-  price: `₩${(index + 1) * 1000}`,
-  product_colors: "아름다운",
-  stock: index % 3 === 0 ? "34" : index % 3 === 1 ? "12" : "20",
-  category: "멋진",
-  tag_list: "비건",
-  date1: "2024-08-08 12:34:56",
-  date2: "2024-08-08 12:34:56",
-}));
+import React, { useState, useEffect } from "react";
 
 const ITEMS_PER_PAGE = 5; // 페이지당 출력할 항목 수
+const PAGES_PER_GROUP = 5; // 그룹당 페이지 수
+
+const deleteOrder = async (order_no: any) => {
+  const res = await fetch(
+    `http://localhost:4000/api/products/delete?order_no=${order_no}`
+  );
+};
 
 const Home = () => {
   const [levelType, setLevelType] = useState("");
@@ -24,23 +17,54 @@ const Home = () => {
   const [endDate, setEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 현재 페이지에 표시할 항목들
-  const currentOrders = fakeOrders.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  // 여기부터 작성, 여기부터 return 전까지의 기존 코드 모두 제거 후 작성
+  const [orders, setOrders] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // 페이지 수 계산
-  const totalPages = Math.ceil(fakeOrders.length / ITEMS_PER_PAGE);
+  const fetchOrders = async (page_no) => {
+    const res = await fetch("http://localhost:4000/api/products/read");
+    const retVal = await res.text();
+    const data = JSON.parse(retVal).slice((page_no - 1) * 5, page_no * 5);
 
-  const handleFilter = () => {
-    // 필터링 로직을 추가하세요
-    console.log("Filtering orders with:", { levelType, startDate, endDate });
+    setOrders(data);
+  };
+
+  useEffect(() => {
+    fetchOrders(1);
+
+    const fetchData = async () => {
+      const res = await fetch("http://localhost:4000/api/products/read");
+      const data = await res.text();
+      setTotalPages(Math.ceil(JSON.parse(data).length / ITEMS_PER_PAGE));
+    };
+
+    fetchData();
+  }, []);
+
+  const currentGroup = Math.ceil(currentPage / PAGES_PER_GROUP);
+  const startPage = (currentGroup - 1) * PAGES_PER_GROUP + 1;
+  const endPage = Math.min(startPage + PAGES_PER_GROUP - 1, totalPages);
+
+  const handlePageClick = (pageNo: number) => {
+    setCurrentPage(pageNo);
+    fetchOrders(pageNo);
+  };
+
+  const handleGroupNavigation = (direction: "prev" | "next") => {
+    let newGroupStartPage =
+      direction === "prev"
+        ? startPage - PAGES_PER_GROUP
+        : startPage + PAGES_PER_GROUP;
+    newGroupStartPage = Math.max(newGroupStartPage, 1);
+    const newPage = newGroupStartPage;
+
+    setCurrentPage(newPage);
+    fetchOrders(newPage);
   };
 
   return (
-    <main className="flex container mx-auto">
-      <div>
+    <main className="container  flex mx-auto ">
+      <div className="w-full max-w-4xl ">
         <div className="mt-6 text-right pb-7">
           <a
             href="/item/regist"
@@ -50,7 +74,7 @@ const Home = () => {
           </a>
         </div>
         {/* 주문목록리스트출력 */}
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="w-full divide-y divide-gray-200 ">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -59,7 +83,7 @@ const Home = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 이미지
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider style={{ maxWidth: '200px' }}">
                 상품명
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -82,25 +106,33 @@ const Home = () => {
               </th>
               <th
                 colSpan={2}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider "
               >
                 관리
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentOrders.map((order) => (
-              <tr key={order.no}>
+            {/* !! 여기부터 구조체와 안맞는 멤버 변수들 수정 */}
+            {orders.map((order) => (
+              <tr key={order.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <a
                     href="/item/detail"
                     className="text-blue-600 hover:text-blue-900"
                   >
-                    {order.no}
+                    {order.id}
                   </a>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.image}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <img src={order.image_link} style={{ width: "50px" }}></img>
+                </td>
+                <td
+                  className="px-6 py-4 overflow-hidden text-ellipsis whitespace-nowrap"
+                  style={{ maxWidth: "200px" }}
+                >
+                  {order.name}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">{order.price}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {order.product_colors}
@@ -110,21 +142,35 @@ const Home = () => {
                   {order.category}
                 </td>
 
-                <td className="px-6 py-4 whitespace-nowrap">{order.date1}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.date2}</td>
-                <td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {order.created_at.slice(0, 10)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {order.updated_at.slice(0, 10)}
+                </td>
+                <td className="px-6 py-4 flex space-x-2">
                   <a
                     href="/item/regist"
-                    className="bg-gray-700 text-white py-2 px-4 mx-2 rounded-lg hover:bg-gray-600"
+                    className="bg-gray-700 text-white py-2 px-4 mx-2 rounded-lg hover:bg-gray-600 font-light"
+                    style={{
+                      minWidth: "60px",
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     수정
                   </a>
-                  <a
-                    href="/item/regist"
-                    className="bg-gray-700 text-white py-2 px-4  mx-2 rounded-lg hover:bg-gray-600"
+                  <button
+                    className="bg-gray-700 text-white py-2 px-4 mx-2 rounded-lg hover:bg-gray-600 font-light"
+                    style={{
+                      minWidth: "60px",
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                    }}
+                    onClick={() => deleteOrder(order.id)}
                   >
                     삭제
-                  </a>
+                  </button>
                 </td>
               </tr>
             ))}
@@ -134,26 +180,28 @@ const Home = () => {
         <div className="flex justify-center mt-4">
           <button
             className="px-4 py-2 mx-1 bg-gray-200 rounded"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
+            onClick={() => handleGroupNavigation("prev")}
+            disabled={startPage === 1}
           >
             이전
           </button>
-          {Array.from({ length: totalPages }, (_, index) => (
+          {Array.from({ length: endPage - startPage + 1 }, (_, index) => (
             <button
-              key={index + 1}
-              className={`px-4 py-2 mx-1 rounded ${currentPage === index + 1 ? "bg-gray-700 text-white" : "bg-gray-200"}`}
-              onClick={() => setCurrentPage(index + 1)}
+              key={startPage + index}
+              className={`px-4 py-2 mx-1 rounded ${
+                currentPage === startPage + index
+                  ? "bg-gray-700 text-white"
+                  : "bg-gray-200"
+              }`}
+              onClick={() => handlePageClick(startPage + index)}
             >
-              {index + 1}
+              {startPage + index}
             </button>
           ))}
           <button
             className="px-4 py-2 mx-1 bg-gray-200 rounded"
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
+            onClick={() => handleGroupNavigation("next")}
+            disabled={endPage === totalPages}
           >
             다음
           </button>
